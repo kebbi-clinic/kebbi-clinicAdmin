@@ -88,6 +88,22 @@ a { color: var(--blue-700); text-decoration: none; }
 /* ---------- Components ---------- */
 .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
 .card .card-h { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.card .card-b { padding: 16px 18px; }
+/* Toast overlay (live notifications + deploy-config warnings). Fixed so it can
+ * never take flex space inside .shell and squeeze the page content off-screen. */
+.live-toast {
+  position: fixed; top: 14px; right: 14px; z-index: 70; max-width: 340px;
+  display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px;
+  border-radius: var(--radius); background: var(--blue-900); color: #fff;
+  font-size: 13px; box-shadow: 0 12px 30px rgba(16, 42, 67, 0.25);
+}
+.live-toast .t { opacity: 0.9; font-size: 12.5px; margin-top: 2px; }
+@media (max-width: 900px) { .live-toast { left: 14px; right: 14px; max-width: none; } }
+/* Header row above a permission chip grid. */
+.perm-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+/* Let a card span both columns of a .grid.cols-2 / .cols-3. */
+.span-2 { grid-column: span 2; }
+@media (max-width: 900px) { .span-2 { grid-column: auto; } }
 .grid { display: grid; gap: 16px; }
 .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
 .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }

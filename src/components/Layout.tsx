@@ -37,7 +37,13 @@ export function Layout({ title, children }: { title: string; children: React.Rea
   const loc = useLocation()
   const nav = useNavigate()
   const { user, logout } = useAuth()
+  /* Every hook above runs unconditionally (Rules of Hooks). The route guard
+     normally guarantees a user, but a stale/expired token can leave `user` null
+     for a render — the old unguarded `user.role` reads then threw and an
+     uncaught render error blanked the entire page. */
+  const role = user?.role ?? ''
   const initials = user?.name ? user.name.split(' ').slice(0, 2).map((w) => w[0]).join('') : ''
+  if (!user) return null
   /* Live presence — who has the app open right now (403 simply shows nothing
      for scoped admins without the staff capability). */
   const { data: onlineUsers = [], refetch: refetchPresence } = useFetch<PresenceUser[]>(paths.adminPresence)
@@ -51,9 +57,9 @@ export function Layout({ title, children }: { title: string; children: React.Rea
       if (n?.text) { playPing(); setToast(n.text); setTimeout(() => setToast(null), 6000) }
     }
     if (evt === 'presence') refetchPresence()
-  }, ['notification', 'activity.new', 'permissions.changed', 'staff.updated', 'presence'], user.role)
+  }, ['notification', 'activity.new', 'permissions.changed', 'staff.updated', 'presence'], role)
 
-  React.useEffect(() => { subscribeRole(user.role) }, [user.role])
+  React.useEffect(() => { subscribeRole(role) }, [role])
 
   /* Register this browser for Web Push so alerts (with OS sound) still arrive
      when the tab is closed — role is taken from the session server-side. */
