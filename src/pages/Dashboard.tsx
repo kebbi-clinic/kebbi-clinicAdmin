@@ -8,8 +8,10 @@ interface PresenceUser { id: string; name: string; role: string; app: string; si
 
 export default function Dashboard() {
   const { data: s, loading, error } = useFetch<Any>(paths.adminStats)
-  const { data: online = [], refetch: refetchPresence } = useFetch<PresenceUser[]>(paths.adminPresence)
+  const { data: online = [], refetch: refetchPresence } = useFetch<PresenceUser[]>(paths.adminPresence, [], 'list')
   useRealtime(() => { refetchPresence() }, ['presence'])
+  /* A partially-populated or error-shaped payload must never reach .map(). */
+  const roleCounts: [string, number][] = Array.isArray(s?.roleCounts) ? s.roleCounts : []
   return (
     <Layout title="Admin Dashboard">
       <PageHead title="Hospital Overview" sub="What is happening across the entire hospital — live from the shared backend." />
@@ -35,7 +37,7 @@ export default function Dashboard() {
           <Card title="Staff by Department">
             <div className="tbl-wrap"><table className="tbl">
               <thead><tr><th>Role</th><th>Count</th></tr></thead>
-              <tbody>{(s.roleCounts || []).map(([role, count]: [string, number]) => (
+              <tbody>{roleCounts.map(([role, count]: [string, number]) => (
                 <tr key={role}><td>{role}s</td><td><b>{count}</b></td></tr>
               ))}</tbody>
             </table></div>

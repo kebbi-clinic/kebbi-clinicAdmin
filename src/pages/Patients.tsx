@@ -8,7 +8,7 @@ import type { Patient } from '../data'
 
 export default function Patients() {
   const [q, setQ] = useState('')
-  const { data: list = [], loading, refetch } = useFetch<Patient[]>(paths.patients)
+  const { data: list = [], loading, refetch } = useFetch<Patient[]>(paths.patients, [], 'list')
   useRealtime(() => refetch())
   const filtered = list.filter((p) => [p.id, p.firstName, p.surname, p.phone].join(' ').toLowerCase().includes(q.toLowerCase()))
 

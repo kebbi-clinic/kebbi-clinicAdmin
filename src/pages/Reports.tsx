@@ -21,7 +21,10 @@ export default function Reports() {
   const pharmacy = r?.pharmacy ?? {}
   const laboratory = r?.laboratory ?? {}
   const deptActivity: { dept: string; actions: number }[] = Array.isArray(r?.deptActivity) ? r.deptActivity : []
-  const byMethod: [string, number][] = Object.entries((financial.byMethod ?? {}) as Record<string, number>).map(([m, v]) => [m, num(v)])
+  const byMethod: [string, number][] = Object.entries(
+    (financial.byMethod && typeof financial.byMethod === 'object' && !Array.isArray(financial.byMethod)
+      ? financial.byMethod : {}) as Record<string, number>,
+  ).map(([m, v]) => [m, num(v)])
 
   const needle = q.trim().toLowerCase()
   const deptRows = useMemo(() => deptActivity.filter((d) => !needle || String(d.dept).toLowerCase().includes(needle)), [needle, JSON.stringify(r)])

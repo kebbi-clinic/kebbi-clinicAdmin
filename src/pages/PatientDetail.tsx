@@ -7,6 +7,11 @@ import { paths } from '../endpoints'
 
 type Any = Record<string, any>
 
+/** Coerce a possibly-missing/partial backend field into a real array. `x || []`
+ *  only covers undefined, so a non-array value would still throw on .map() and
+ *  blank the whole app via the error boundary. */
+const list = (v: unknown): Any[] => (Array.isArray(v) ? (v as Any[]) : [])
+
 const TABS = [
   'Overview', 'Care Team', 'Visits', 'Vitals', 'Investigations',
   'Prescriptions', 'Payments', 'Wallet', 'Admissions', 'Activity', 'Audit Trail',
@@ -20,7 +25,7 @@ export default function PatientDetail() {
   useRealtime(() => { void refetch() }, [`patient:${id}`, 'activity', 'payment', 'vitals', 'visit', 'investigation', 'prescription', 'admission'])
 
   const auditTimeline = useMemo(
-    () => (b?.audit || []).map((a: Any) => ({ time: a.when, what: a.action, meta: `${a.who} · ${a.dept || ''}${a.extra ? ' · ' + a.extra : ''}`, green: false })),
+    () => list(b?.audit).map((a: Any) => ({ time: a.when, what: a.action, meta: `${a.who} · ${a.dept || ''}${a.extra ? ' · ' + a.extra : ''}`, green: false })),
     [b],
   )
 
@@ -32,15 +37,15 @@ export default function PatientDetail() {
   const age = p.dob ? new Date().getFullYear() - Number(String(p.dob).slice(0, 4)) : '—'
   /* Tolerate missing/partial payloads so one bad record can't white-screen the app. */
   const summary = b.summary || {}
-  const visits = b.visits || []
-  const careTeam = b.careTeam || []
-  const vitals = b.vitals || []
-  const investigations = b.investigations || []
-  const prescriptions = b.prescriptions || []
-  const payments = b.payments || []
-  const walletTxs = b.walletTxs || []
-  const admissions = b.admissions || []
-  const activity = b.activity || []
+  const visits = list(b.visits)
+  const careTeam = list(b.careTeam)
+  const vitals = list(b.vitals)
+  const investigations = list(b.investigations)
+  const prescriptions = list(b.prescriptions)
+  const payments = list(b.payments)
+  const walletTxs = list(b.walletTxs)
+  const admissions = list(b.admissions)
+  const activity = list(b.activity)
 
   return (
     <Layout title="Patient 360°">

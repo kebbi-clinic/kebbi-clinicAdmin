@@ -13,7 +13,13 @@ export default function SettingsPage() {
   const [newMethod, setNewMethod] = useState('')
   const [ok, setOk] = useState('')
   const [err, setErr] = useState('')
-  if (!s) return <Layout title="System Settings"><div className="muted">Loading…</div></Layout>
+  if (!s || !s.hospital) return <Layout title="System Settings"><div className="muted">Loading…</div></Layout>
+  /* These lists are optional: guard each one so a partial/older backend payload
+     renders an empty group instead of throwing and blanking the whole app. */
+  const arr = (v: unknown): string[] => (Array.isArray(v) ? (v as string[]) : [])
+  const investigationTypes = arr(s.investigationTypes)
+  const drugCategories = arr(s.drugCategories)
+  const paymentMethods = arr(s.paymentMethods)
 
   const save = async (next: Partial<Settings>) => {
     try { await settingsApi.update(next); setOk('Settings saved.'); refetch() }
@@ -21,7 +27,7 @@ export default function SettingsPage() {
   }
   const addToList = (key: 'investigationTypes' | 'drugCategories' | 'paymentMethods', value: string, clear: () => void) => {
     if (!value.trim()) return
-    save({ [key]: [...s[key], value.trim()] } as Partial<Settings>)
+    save({ [key]: [...arr(s[key]), value.trim()] } as Partial<Settings>)
     clear()
   }
 
@@ -43,7 +49,7 @@ export default function SettingsPage() {
         </Card>
         <Card title="Investigation Types (Laboratory)">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-            {s.investigationTypes.map((t) => <Badge key={t} tone="blue">{t}</Badge>)}
+            {investigationTypes.map((t) => <Badge key={t} tone="blue">{t}</Badge>)}
           </div>
           <div className="search-row">
             <input className="input" placeholder="Add new test e.g. Malaria Test" value={newTest} onChange={(e) => setNewTest(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addToList('investigationTypes', newTest, () => setNewTest(''))} />
@@ -52,7 +58,7 @@ export default function SettingsPage() {
         </Card>
         <Card title="Drug Categories">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-            {s.drugCategories.map((t) => <Badge key={t} tone="green">{t}</Badge>)}
+            {drugCategories.map((t) => <Badge key={t} tone="green">{t}</Badge>)}
           </div>
           <div className="search-row">
             <input className="input" placeholder="Add new category" value={newCat} onChange={(e) => setNewCat(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addToList('drugCategories', newCat, () => setNewCat(''))} />
@@ -61,7 +67,7 @@ export default function SettingsPage() {
         </Card>
         <Card title="Payment Methods">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-            {s.paymentMethods.map((t) => <Badge key={t} tone="blue">{t}</Badge>)}
+            {paymentMethods.map((t) => <Badge key={t} tone="blue">{t}</Badge>)}
           </div>
           <div className="search-row">
             <input className="input" placeholder="Add new payment method" value={newMethod} onChange={(e) => setNewMethod(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addToList('paymentMethods', newMethod, () => setNewMethod(''))} />

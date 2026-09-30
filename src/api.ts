@@ -75,7 +75,20 @@ export const api = {
   configError,
 }
 
-export function useFetch<T>(url: string, deps: unknown[] = []) {
+/** Guard the shape of a response before it reaches a component. The API is
+ *  reached through the same host as the app, so a misconfigured base URL or a
+ *  proxy error can hand back HTML or an error object instead of the expected
+ *  list. That used to flow straight into `data.map(...)` / `new Set(data)`,
+ *  which threw and let the error boundary replace the whole page with a blank
+ *  error screen. In 'list' mode anything that is not an array becomes []. */
+export function shapeCheck<T>(d: unknown, kind: 'list' | 'object' = 'object'): T | undefined {
+  if (kind === 'list') return (Array.isArray(d) ? d : []) as T
+  if (Array.isArray(d)) return d as T
+  if (d && typeof d === 'object') return d as T
+  return undefined
+}
+
+export function useFetch<T>(url: string, deps: unknown[] = [], kind: 'list' | 'object' = 'object') {
   const [data, setData] = useState<T | undefined>(undefined)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -83,12 +96,17 @@ export function useFetch<T>(url: string, deps: unknown[] = []) {
     let live = true
     setLoading(true)
     api.get<T>(url)
-      .then((d) => { if (live) { setData(d); setError('') } })
+      .then((d) => { if (live) { setData(shapeCheck<T>(d, kind)); setError('') } })
       .catch((e) => { if (live) setError(e.message) })
       .finally(() => { if (live) setLoading(false) })
     return () => { live = false }
   }, deps)
-  return { data, error, loading, refetch: () => api.get<T>(url).then((d) => setData(d)) }
+  return {
+    data,
+    error,
+    loading,
+    refetch: () => api.get<T>(url).then((d) => setData(shapeCheck<T>(d, kind))),
+  }
 }
 
 let socket: Socket | null = null

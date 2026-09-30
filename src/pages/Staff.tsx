@@ -37,10 +37,10 @@ export default function StaffPage() {
   const [pw, setPw] = useState('')
   const [pwShow, setPwShow] = useState(false)
   const [pwMustChange, setPwMustChange] = useState(true)
-  const { data: list = [], refetch } = useFetch<StaffAcc[]>(paths.adminStaff)
+  const { data: list = [], refetch } = useFetch<StaffAcc[]>(paths.adminStaff, [], 'list')
   const { data: permData, refetch: refetchPerms } = useFetch<Perms>(paths.adminPermissions)
   /* Live presence + auto-refresh when staff connect/disconnect or accounts change. */
-  const { data: online = [], refetch: refetchPresence } = useFetch<PresenceUser[]>(paths.adminPresence)
+  const { data: online = [], refetch: refetchPresence } = useFetch<PresenceUser[]>(paths.adminPresence, [], 'list')
   useRealtime((evt) => {
     if (evt === 'presence') refetchPresence()
     else { refetch(); refetchPresence() }

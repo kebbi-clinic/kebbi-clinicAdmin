@@ -24,7 +24,7 @@ export default function AuditLog() {
   const [q, setQ] = useState('')
   const [tab, setTab] = useState('People')
   const [selected, setSelected] = useState<string | null>(null)
-  const { data, loading, error } = useFetch<AuditEntry[]>(paths.adminAudit(''), [])
+  const { data, loading, error } = useFetch<AuditEntry[]>(paths.adminAudit(''), [], 'list')
   const all = Array.isArray(data) ? data : []
 
   /* One fetch, filtered client-side: typing in the box never re-hits the API. */

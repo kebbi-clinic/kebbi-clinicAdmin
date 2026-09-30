@@ -46,7 +46,7 @@ export function Layout({ title, children }: { title: string; children: React.Rea
   if (!user) return null
   /* Live presence — who has the app open right now (403 simply shows nothing
      for scoped admins without the staff capability). */
-  const { data: onlineUsers = [], refetch: refetchPresence } = useFetch<PresenceUser[]>(paths.adminPresence)
+  const { data: onlineUsers = [], refetch: refetchPresence } = useFetch<PresenceUser[]>(paths.adminPresence, [], 'list')
 
   /* Admins listen in on activity across the whole hospital, live. Incoming
      notifications arrive as toast pop-ups (and Web Push when the tab is
