@@ -93,14 +93,30 @@ export function useFetch<T>(url: string, deps: unknown[] = []) {
 
 let socket: Socket | null = null
 
+/* Realtime origin. Unset by default: the API is a Vercel /api function and
+ * cannot host websocket upgrades, so connecting to it only produced endless
+ * failed retries in the console. Set VITE_SOCKET_URL to a long-lived Socket.IO
+ * host to re-enable live updates — no other code change required. */
+const SOCKET_URL = (import.meta.env.VITE_SOCKET_URL || '').replace(/\/+$/, '')
+export const REALTIME_ENABLED = !!SOCKET_URL
+
 /** One shared Socket.IO connection for the whole app. The login JWT travels in
  *  the handshake so the backend can track this user's presence (online status).
- *  Returns null when no backend origin is configured — the caller (Layout) sits
- *  behind the auth guard, so a missing origin is a deploy misconfiguration and
- *  must not spray failed websocket retries into the console. */
+ *  Returns null when realtime is off — either no VITE_SOCKET_URL is configured
+ *  (the API is a Vercel /api function and cannot host websocket upgrades, so
+ *  connecting produced endless failed retries) or no API origin is set. Callers
+ *  already null-check, so live updates are simply skipped and screens fall back
+ *  to fetching on mount/navigate. Set VITE_SOCKET_URL to a long-lived Socket.IO
+ *  host to switch realtime back on. */
 export function getSocket(): Socket | null {
-  if (!BASE) return null
-  if (!socket) socket = ioClient(BASE, { transports: ['websocket', 'polling'], auth: { token: token || undefined } })
+  if (!BASE || !SOCKET_URL) return null
+  if (!socket) socket = ioClient(SOCKET_URL, {
+    transports: ['websocket', 'polling'],
+    auth: { token: token || undefined },
+    /* Bounded, not Infinity: a host that cannot serve websockets should not
+       keep retrying for the lifetime of the page. */
+    reconnectionAttempts: 5,
+  })
   return socket
 }
 
