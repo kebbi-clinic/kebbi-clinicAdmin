@@ -65,7 +65,7 @@ export default function Login() {
           <button className="btn primary" style={{ width: '100%', justifyContent: 'center' }} type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Login'}</button>
           <div className="foot"><a href="#">Forgot Password?</a></div>
           <div className="demo-note">
-            Only authorized administrative accounts may access this app. It shares the same backend/database as the Hospital Staff App — hospital staff accounts are rejected here.
+            Only authorized administrative accounts may access this app. 
           </div>
         </form>
         </>)}
