@@ -2,7 +2,20 @@ import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig 
 import { useEffect, useRef, useState } from 'react'
 import { io as ioClient, Socket } from 'socket.io-client'
 
-const BASE = import.meta.env.VITE_API_URL ;
+/* Backend origin. Set VITE_API_URL per environment (Vercel → Settings →
+ * Environment Variables, and .env.development locally). Normalised so both
+ * "http://host" and "http://host/" work with the absolute path builders below. */
+const RAW_BASE = import.meta.env.VITE_API_URL
+const BASE = (RAW_BASE || '').replace(/\/+$/, '')
+/* The backend must be reachable from the visitor's browser, so a localhost
+ * value in a deployed build is always a misconfiguration — without this guard
+ * the mistake only shows up as silent failed requests / crashed reloads. */
+const LOCAL_HOST = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])/i
+export const configError: string =
+  !BASE ? 'VITE_API_URL is not set'
+    : LOCAL_HOST.test(BASE) && typeof window !== 'undefined' && !LOCAL_HOST.test(window.location.origin)
+      ? `VITE_API_URL points at ${BASE}, which only exists on your own machine`
+      : ''
 
 /** Turn a stored file path (e.g. /api/uploads/x.png) into a full URL the browser can load. */
 export function fileUrl(u?: string): string {
@@ -59,6 +72,7 @@ export const api = {
   setToken,
   hasToken: () => !!token,
   BASE,
+  configError,
 }
 
 export function useFetch<T>(url: string, deps: unknown[] = []) {
@@ -80,8 +94,12 @@ export function useFetch<T>(url: string, deps: unknown[] = []) {
 let socket: Socket | null = null
 
 /** One shared Socket.IO connection for the whole app. The login JWT travels in
- *  the handshake so the backend can track this user's presence (online status). */
-export function getSocket(): Socket {
+ *  the handshake so the backend can track this user's presence (online status).
+ *  Returns null when no backend origin is configured — the caller (Layout) sits
+ *  behind the auth guard, so a missing origin is a deploy misconfiguration and
+ *  must not spray failed websocket retries into the console. */
+export function getSocket(): Socket | null {
+  if (!BASE) return null
   if (!socket) socket = ioClient(BASE, { transports: ['websocket', 'polling'], auth: { token: token || undefined } })
   return socket
 }
@@ -89,6 +107,7 @@ export function getSocket(): Socket {
 /** Join this user's role-room so role-targeted events (notifications) arrive. */
 export function subscribeRole(role: string) {
   const s = getSocket()
+  if (!s) return
   if (s.connected) s.emit('subscribe', role)
   else s.on('connect', () => s.emit('subscribe', role))
 }
@@ -107,6 +126,7 @@ export function useRealtime(onEvent: (evt?: string, payload?: unknown) => void, 
   const key = events.join('|')
   useEffect(() => {
     const s = getSocket()
+    if (!s) return
     if (role) s.emit('subscribe', role)
     const handlers = (key ? key.split('|') : REALTIME_EVENTS).map((e) => {
       const h = (payload?: unknown) => cb.current(e, payload)

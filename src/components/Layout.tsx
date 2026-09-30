@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from './ui'
 import { useAuth } from '../auth'
-import { useFetch, useRealtime, subscribeRole } from '../api'
+import { useFetch, useRealtime, subscribeRole, configError } from '../api'
 import { playPing } from '../sound'
 import { initPush } from '../push'
 import { paths } from '../endpoints'
@@ -37,7 +37,7 @@ export function Layout({ title, children }: { title: string; children: React.Rea
   const loc = useLocation()
   const nav = useNavigate()
   const { user, logout } = useAuth()
-  const initials = user.name.split(' ').slice(0, 2).map((w) => w[0]).join('')
+  const initials = user?.name ? user.name.split(' ').slice(0, 2).map((w) => w[0]).join('') : ''
   /* Live presence — who has the app open right now (403 simply shows nothing
      for scoped admins without the staff capability). */
   const { data: onlineUsers = [], refetch: refetchPresence } = useFetch<PresenceUser[]>(paths.adminPresence)
@@ -69,6 +69,12 @@ export function Layout({ title, children }: { title: string; children: React.Rea
 
   return (
     <div className="shell">
+      {configError && (
+        <div className="live-toast" style={{ background: 'var(--red-600)' }}>
+          <Icon name="shield" size={16} />
+          <div><b>Backend not configured</b><div className="t">{configError}. Set VITE_API_URL for this deployment and rebuild.</div></div>
+        </div>
+      )}
       {toast && (
         <div className="live-toast">
           <Icon name="bell" size={16} />
