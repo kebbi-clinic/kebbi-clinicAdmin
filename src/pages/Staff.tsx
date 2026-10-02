@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Layout } from '../components/Layout'
 import { Card, PageHead, Badge, Modal, Field, Tabs } from '../components/ui'
 import { useFetch, useRealtime } from '../api'
+import { useAuth } from '../auth'
 import { paths, permissionsApi, staffApi } from '../endpoints'
 import { ROLES, ADMIN_ROLES } from '../data'
 
@@ -9,7 +10,7 @@ interface StaffAcc { id: string; firstName: string; surname: string; phone: stri
 interface Perms { caps: Record<string, string>; matrix: Record<string, { can: string[]; cannot: string[] }>; counts: Record<string, number> }
 interface PresenceUser { id: string; name: string; role: string; app: string; since: string }
 
-const CAP_ORDER = ['patients.register', 'visits.start', 'patients.status', 'consultation', 'vitals', 'discharge', 'lab.result', 'rad.result', 'rx.dispense', 'inventory.manage', 'wallet.fund', 'staff.manage', 'reports.view', 'settings.manage']
+const CAP_ORDER = ['patients.register', 'visits.start', 'patients.status', 'patients.activate', 'patients.inactive.view', 'consultation', 'vitals', 'discharge', 'services.record', 'lab.result', 'rad.result', 'rx.dispense', 'inventory.manage', 'wallet.fund', 'staff.manage', 'staff.delete', 'services.manage', 'reports.view', 'settings.manage']
 
 /** The admin-console pages an admin account can be scoped to when it is created. */
 const ADMIN_PAGE_CAPS: { cap: string; label: string; desc: string }[] = [
@@ -37,6 +38,12 @@ export default function StaffPage() {
   const [pw, setPw] = useState('')
   const [pwShow, setPwShow] = useState(false)
   const [pwMustChange, setPwMustChange] = useState(true)
+  /* Permanent delete — a destructive, irreversible action, so it is confirmed
+     with the username typed out and needs the `staff.delete` capability. */
+  const [delTarget, setDelTarget] = useState<StaffAcc | null>(null)
+  const [delConfirm, setDelConfirm] = useState('')
+  /* The signed-in admin, so we can hide/disable Delete on their own row. */
+  const { user } = useAuth()
   const { data: list = [], refetch } = useFetch<StaffAcc[]>(paths.adminStaff, [], 'list')
   const { data: permData, refetch: refetchPerms } = useFetch<Perms>(paths.adminPermissions)
   /* Live presence + auto-refresh when staff connect/disconnect or accounts change. */
@@ -119,6 +126,24 @@ export default function StaffPage() {
     } catch (e) { setErr((e as Error).message) } finally { setChanging(null) }
   }
 
+  /* Permanently delete a staff record. The username must be typed to confirm —
+     this cannot be undone, so it is deliberately hard to do by accident. */
+  const openDelete = (s: StaffAcc) => { setDelTarget(s); setDelConfirm(''); setErr(''); setOk('') }
+  const removeStaff = async () => {
+    if (!delTarget) return
+    if (delConfirm.trim().toLowerCase() !== delTarget.username.toLowerCase()) {
+      setErr(`Type the username "${delTarget.username}" exactly to confirm the deletion.`)
+      return
+    }
+    setBusyRow(delTarget.id); setErr(''); setOk('')
+    const who = `${delTarget.firstName} ${delTarget.surname} (${delTarget.username})`
+    try {
+      await staffApi.remove(delTarget.id)
+      setOk(`${who} was permanently deleted. The action is recorded in the audit trail.`)
+      setDelTarget(null); setDelConfirm(''); refetch()
+    } catch (e) { setErr((e as Error).message) } finally { setBusyRow(null) }
+  }
+
   const startEdit = (role: string) => {
     setEditing(role); setTab('Role Permissions'); setErr(''); setOk('')
     setDraft(permData?.matrix[role]?.can || [])
@@ -186,6 +211,11 @@ export default function StaffPage() {
                     disabled={busyRow === s.id}
                     onClick={() => update(s.id, { status: s.status === 'Active' ? 'Inactive' : 'Active' }, `${s.firstName} ${s.status === 'Active' ? 'deactivated' : 'activated'}.`)}>
                     {s.status === 'Active' ? 'Deactivate' : 'Activate'}
+                  </button>{' '}
+                  <button className="btn danger sm" title="Permanently delete this staff record"
+                    disabled={busyRow === s.id || s.id === user?.id}
+                    onClick={() => openDelete(s)}>
+                    Delete
                   </button>
                 </td>
               </tr>
@@ -300,6 +330,28 @@ export default function StaffPage() {
           {pwTarget.email
             ? <div className="demo-note">The new password will be emailed to <b>{pwTarget.email}</b> (Mailtrap).</div>
             : <div className="demo-note">This account has no email on file — share the new password with them directly.</div>}
+        </Modal>
+      )}
+      {delTarget && (
+        <Modal title={`Delete ${delTarget.firstName} ${delTarget.surname}?`} onClose={() => { setDelTarget(null); setDelConfirm('') }}
+          footer={<><button className="btn ghost" onClick={() => { setDelTarget(null); setDelConfirm('') }}>Cancel</button>
+            <button className="btn danger" disabled={busyRow === delTarget.id || delConfirm.trim().toLowerCase() !== delTarget.username.toLowerCase()}
+              onClick={removeStaff}>{busyRow === delTarget.id ? 'Deleting…' : 'Delete Permanently'}</button></>}>
+          {err && <div className="demo-note" style={{ background: 'var(--red-100)', color: 'var(--red-600)' }}>{err}</div>}
+          <div className="demo-note" style={{ background: 'var(--red-100)', color: 'var(--red-600)' }}>
+            <b>This removes the staff record completely — not a deactivation.</b>
+            The account can no longer sign in, and the username becomes available again.
+            The deletion itself is written to the audit trail.
+          </div>
+          <div className="kv">
+            <div className="k">Name</div><div className="v">{delTarget.firstName} {delTarget.surname}</div>
+            <div className="k">Username</div><div className="v"><b>{delTarget.username}</b></div>
+            <div className="k">Role</div><div className="v">{delTarget.role}</div>
+          </div>
+          <div className="field">
+            <label>Type <b>{delTarget.username}</b> to confirm</label>
+            <input className="input" value={delConfirm} onChange={(e) => setDelConfirm(e.target.value)} placeholder={delTarget.username} autoFocus />
+          </div>
         </Modal>
       )}
       {accessTarget && (

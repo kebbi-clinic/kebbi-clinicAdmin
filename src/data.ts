@@ -18,24 +18,31 @@ export const ADMIN_ROLES = ['Super Admin', 'Hospital Administrator']
 
 /** All capabilities the server understands, in display order. */
 export const CAP_ORDER = [
-  'patients.register', 'visits.start', 'patients.status', 'consultation', 'vitals',
-  'discharge', 'lab.result', 'rad.result', 'rx.dispense', 'inventory.manage',
-  'wallet.fund', 'staff.manage', 'reports.view', 'settings.manage',
+  'patients.register', 'visits.start', 'patients.status', 'patients.activate',
+  'patients.inactive.view', 'consultation', 'vitals', 'discharge', 'services.record',
+  'lab.result', 'rad.result', 'rx.dispense', 'inventory.manage',
+  'wallet.fund', 'staff.manage', 'staff.delete', 'services.manage',
+  'reports.view', 'settings.manage',
 ]
 
 export const CAP_LABELS: Record<string, string> = {
   'patients.register': 'Register new patient',
   'visits.start': 'Start new visit (returning patient)',
   'patients.status': 'Mark patient Active / Inactive',
+  'patients.activate': 'Activate a patient (records only)',
+  'patients.inactive.view': 'View inactive patients',
   'consultation': 'Perform consultation, request labs, prescribe',
   'vitals': 'Record vitals',
   'discharge': 'Discharge admitted patient',
+  'services.record': 'Record a procedure / service performed',
   'lab.result': 'Upload laboratory results',
   'rad.result': 'Upload radiology reports',
   'rx.dispense': 'Dispense prescriptions',
   'inventory.manage': 'Manage pharmacy inventory & prices',
   'wallet.fund': 'Fund patient wallets / record payments',
   'staff.manage': 'Create / edit / deactivate staff',
+  'staff.delete': 'Permanently delete a staff record',
+  'services.manage': 'Create / edit procedures & services and their prices',
   'reports.view': 'View reports & audit trail',
   'settings.manage': 'Configure system settings',
 }

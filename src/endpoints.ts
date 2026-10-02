@@ -33,6 +33,8 @@ export const paths = {
   adminNotifications: '/api/admin/notifications',
   /** GET /api/admin/presence — staff currently online (live presence) */
   adminPresence: '/api/admin/presence',
+  /** GET /api/services — the priced procedure/service catalogue */
+  services: '/api/services',
   /** GET /api/notifications — role-targeted notifications */
   notifications: '/api/notifications',
 }
@@ -54,6 +56,17 @@ export const staffApi = {
     api.put(`/api/admin/staff/${staffId}`, body),
   changeRole: (username: string, role: string) =>
     api.put(`/api/admin/staff/${username}/role`, { role }),
+  /** Permanently delete a staff record. Requires the `staff.delete` capability,
+      which is granted to administrator roles only. */
+  remove: (staffId: string) =>
+    api.del<{ id: string; username: string; deleted: boolean }>(`/api/admin/staff/${staffId}`),
+}
+
+/* ---------- PROCEDURES / SERVICES ---------- */
+export const serviceApi = {
+  /** body: { name, amount, category?, department?, notes? } */
+  create: (body: Record<string, unknown>) => api.post(paths.services, body),
+  update: (serviceId: string, body: Record<string, unknown>) => api.put(`${paths.services}/${serviceId}`, body),
 }
 
 /* ---------- PERMISSIONS ---------- */
