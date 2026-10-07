@@ -64,9 +64,13 @@ export const staffApi = {
 
 /* ---------- PROCEDURES / SERVICES ---------- */
 export const serviceApi = {
-  /** body: { name, amount, category?, department?, notes? } */
+  /** body: { name, amount, quantity? } */
   create: (body: Record<string, unknown>) => api.post(paths.services, body),
   update: (serviceId: string, body: Record<string, unknown>) => api.put(`${paths.services}/${serviceId}`, body),
+  /** Permanently delete a procedure from the catalogue. Existing patient records
+      that already reference it are unaffected — only the catalogue entry goes. */
+  remove: (serviceId: string) =>
+    api.del<{ id: string; deleted: boolean }>(`${paths.services}/${serviceId}`),
 }
 
 /* ---------- PERMISSIONS ---------- */
