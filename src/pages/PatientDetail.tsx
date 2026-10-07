@@ -25,7 +25,12 @@ export default function PatientDetail() {
   useRealtime(() => { void refetch() }, [`patient:${id}`, 'activity', 'payment', 'vitals', 'visit', 'investigation', 'prescription', 'admission'])
 
   const auditTimeline = useMemo(
-    () => list(b?.audit).map((a: Any) => ({ time: a.when, what: a.action, meta: `${a.who} · ${a.dept || ''}${a.extra ? ' · ' + a.extra : ''}`, green: false })),
+    () => list(b?.audit).map((a: Any) => ({
+      time: a.when,
+      what: a.action,
+      meta: `${a.who} · ${a.dept || ''}${a.extra ? ' · ' + a.extra : ''}`,
+      green: false,
+    })),
     [b],
   )
 
@@ -113,7 +118,8 @@ export default function PatientDetail() {
           </Card>
         </div>
       )}
-{tab === 'Care Team' && (
+
+      {tab === 'Care Team' && (
         <Card title={`Who attended to ${p.firstName} — ${careTeam.length} recorded actions`}>
           <div className="tbl-wrap"><table className="tbl">
             <thead><tr><th>Department / Role</th><th>Staff Member</th><th>Action</th><th>Date / Time</th></tr></thead>
@@ -235,6 +241,27 @@ export default function PatientDetail() {
               </tr>
             ))}</tbody>
           </table></div>
+        </Card>
+      )}
+
+      {tab === 'Activity' && (
+        <Card title={`Activity — ${activity.length} recent events`}>
+          {activity.length === 0
+            ? <div className="muted" style={{ padding: '12px 14px' }}>No activity recorded yet.</div>
+            : <Timeline items={activity.map((a: Any) => ({
+                time: a.when || a.at,
+                what: a.what || a.action,
+                meta: `${a.who || a.staff || ''}${a.dept ? ' · ' + a.dept : ''}${a.extra ? ' · ' + a.extra : ''}`,
+                green: Boolean(a.green),
+              }))} />}
+        </Card>
+      )}
+
+      {tab === 'Audit Trail' && (
+        <Card title={`Audit Trail — ${auditTimeline.length} entries`}>
+          {auditTimeline.length === 0
+            ? <div className="muted" style={{ padding: '12px 14px' }}>No audit entries recorded yet.</div>
+            : <Timeline items={auditTimeline} />}
         </Card>
       )}
     </Layout>
