@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth'
 import { hasPageCap } from './components/Layout'
+import { NotFound, OfflineScreen, SystemChrome } from './components/System'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Patients from './pages/Patients'
@@ -23,17 +24,23 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Guard><Dashboard /></Guard>} />
-          <Route path="/patients" element={<Guard cap="admin.patients"><Patients /></Guard>} />
-          <Route path="/patients/:id" element={<Guard cap="admin.patients"><PatientDetail /></Guard>} />
-          <Route path="/staff" element={<Guard cap="admin.staff"><Staff /></Guard>} />
-          <Route path="/audit" element={<Guard cap="admin.audit"><AuditLog /></Guard>} />
-          <Route path="/reports" element={<Guard cap="admin.reports"><Reports /></Guard>} />
-          <Route path="/settings" element={<Guard cap="admin.settings"><Settings /></Guard>} />
-        </Routes>
+        <SystemChrome>
+          {/* Full-screen "no internet" takeover — renders above every route. */}
+          <OfflineScreen />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Guard><Dashboard /></Guard>} />
+            <Route path="/patients" element={<Guard cap="admin.patients"><Patients /></Guard>} />
+            <Route path="/patients/:id" element={<Guard cap="admin.patients"><PatientDetail /></Guard>} />
+            <Route path="/staff" element={<Guard cap="admin.staff"><Staff /></Guard>} />
+            <Route path="/audit" element={<Guard cap="admin.audit"><AuditLog /></Guard>} />
+            <Route path="/reports" element={<Guard cap="admin.reports"><Reports /></Guard>} />
+            <Route path="/settings" element={<Guard cap="admin.settings"><Settings /></Guard>} />
+            {/* Unknown URL — the 404 page, never a blank screen. */}
+            <Route path="*" element={<NotFound home="/dashboard" />} />
+          </Routes>
+        </SystemChrome>
       </BrowserRouter>
     </AuthProvider>
   )
