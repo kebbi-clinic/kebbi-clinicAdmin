@@ -35,6 +35,9 @@ export const paths = {
   adminPresence: '/api/admin/presence',
   /** GET /api/services — the priced procedure/service catalogue */
   services: '/api/services',
+  /** GET /api/tests?dept=Lab|Radiology — laboratory & radiology test
+      inventory with admin-editable prices */
+  tests: (dept?: 'Lab' | 'Radiology') => dept ? `/api/tests?dept=${dept}` : '/api/tests',
   /** GET /api/notifications — role-targeted notifications */
   notifications: '/api/notifications',
 }
@@ -71,6 +74,17 @@ export const serviceApi = {
       that already reference it are unaffected — only the catalogue entry goes. */
   remove: (serviceId: string) =>
     api.del<{ id: string; deleted: boolean }>(`${paths.services}/${serviceId}`),
+}
+
+/* ---------- LAB & RADIOLOGY INVENTORY (test catalogue + prices) ---------- */
+export const testApi = {
+  /** body: { name, dept: 'Lab'|'Radiology', category?, price, stock?, minStock? } */
+  create: (body: Record<string, unknown>) => api.post(paths.tests(), body),
+  update: (testId: string, body: Record<string, unknown>) => api.put(`/api/tests/${testId}`, body),
+  /** Permanently delete a test from the catalogue. Existing patient records
+      that already reference it are unaffected — only the catalogue entry goes. */
+  remove: (testId: string) =>
+    api.del<{ id: string; deleted: boolean }>(`/api/tests/${testId}`),
 }
 
 /* ---------- PERMISSIONS ---------- */

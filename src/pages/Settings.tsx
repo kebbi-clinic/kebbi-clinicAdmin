@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Layout } from '../components/Layout'
 import { Card, PageHead, Field, Badge, Tabs, Modal, naira } from '../components/ui'
 import { useFetch } from '../api'
-import { paths, serviceApi, settingsApi } from '../endpoints'
+import { paths, serviceApi, settingsApi, testApi } from '../endpoints'
+import type { TestItem } from '../data'
 
 interface Settings {
   hospital: Record<string, string>
@@ -22,6 +23,14 @@ export default function SettingsPage() {
     ? (servicesRaw as Service[])
     : Array.isArray((servicesRaw as any)?.data) ? ((servicesRaw as any).data as Service[])
     : Array.isArray((servicesRaw as any)?.list) ? ((servicesRaw as any).list as Service[])
+    : []
+  /* Laboratory & radiology test catalogue — the editable investigation prices
+     (e.g. PCV = ₦2,000) that get billed from the wallet at result upload. */
+  const { data: testsRaw, refetch: refetchTests } = useFetch<unknown>(paths.tests())
+  const tests: TestItem[] = Array.isArray(testsRaw)
+    ? (testsRaw as TestItem[])
+    : Array.isArray((testsRaw as any)?.data) ? ((testsRaw as any).data as TestItem[])
+    : Array.isArray((testsRaw as any)?.list) ? ((testsRaw as any).list as TestItem[])
     : []
 
   const [newTest, setNewTest] = useState('')
@@ -48,6 +57,13 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState<Service | null>(null)
   const [busy, setBusy] = useState(false)
   const [form, setForm] = useState({ name: '', amount: '', quantity: '1' })
+
+  /* Lab & radiology tests — add & edit share one form (the investigation
+     price list, e.g. PCV = ₦2,000). */
+  const [showTest, setShowTest] = useState(false)
+  const [editingTest, setEditingTest] = useState<TestItem | null>(null)
+  const [deletingTest, setDeletingTest] = useState<TestItem | null>(null)
+  const [testForm, setTestForm] = useState({ name: '', dept: 'Lab', category: 'General', price: '', stock: '0', minStock: '0' })
 
   if (!s || !s.hospital) return <Layout title="System Settings"><div className="muted">Loading…</div></Layout>
 
@@ -150,6 +166,45 @@ export default function SettingsPage() {
   }
   const procedureTotal = (Number(form.amount) || 0) * (Number(form.quantity) || 0)
 
+  /* ---- Laboratory & radiology test prices ---- */
+  const resetTest = () => { setTestForm({ name: '', dept: 'Lab', category: 'General', price: '', stock: '0', minStock: '0' }); setErr(''); setOk('') }
+  const openAddTest = () => { resetTest(); setEditingTest(null); setShowTest(true) }
+  const openEditTest = (t: TestItem) => {
+    setEditingTest(t)
+    setTestForm({ name: t.name, dept: t.dept, category: t.category || 'General', price: String(t.price), stock: String(t.stock || 0), minStock: String(t.minStock || 0) })
+    setErr(''); setOk(''); setShowTest(true)
+  }
+  const saveTest = async () => {
+    if (!testForm.name.trim()) { setErr('Enter the test name.'); return }
+    if (testForm.price === '' || Number.isNaN(Number(testForm.price))) { setErr('Enter the price.'); return }
+    setBusy(true); setErr(''); setOk('')
+    try {
+      const body = {
+        name: testForm.name.trim(), dept: testForm.dept, category: testForm.category || 'General',
+        price: Number(testForm.price), stock: Number(testForm.stock) || 0, minStock: Number(testForm.minStock) || 0,
+      }
+      if (editingTest) {
+        await testApi.update(editingTest.id, body)
+        setOk(`"${body.name}" updated to ${naira(body.price)} — applied on the next result upload.`)
+      } else {
+        await testApi.create(body)
+        setOk(`"${body.name}" added at ${naira(body.price)}.`)
+      }
+      setShowTest(false); setEditingTest(null); resetTest(); refetchTests()
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+  }
+  const confirmDeleteTest = async () => {
+    if (!deletingTest) return
+    setBusy(true); setErr('')
+    try {
+      await testApi.remove(deletingTest.id)
+      setOk(`"${deletingTest.name}" deleted from the inventory.`)
+      setDeletingTest(null); refetchTests()
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+  }
+  const labTests = tests.filter((t) => t.dept !== 'Radiology')
+  const radTests = tests.filter((t) => t.dept === 'Radiology')
+
   const chipCard = (key: ListKey, title: string, tone: 'blue' | 'green', newVal: string, setNewVal: (v: string) => void, placeholder: string) => (
     <Card title={title}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
@@ -175,9 +230,9 @@ export default function SettingsPage() {
     <Layout title="System Settings">
       <PageHead title="System Settings" sub="Everything the hospital may want to change later is configurable here — no developer needed.">
         {ok && <Badge tone="green">{ok}</Badge>}
-        {err && !showAdd && !deleting && !editChip && <Badge tone="red">{err}</Badge>}
+        {err && !showAdd && !deleting && !editChip && !showTest && !deletingTest && <Badge tone="red">{err}</Badge>}
       </PageHead>
-      <Tabs tabs={['General', 'Fees & Charges', 'Procedures']} active={tab} onChange={setTab} />
+      <Tabs tabs={['General', 'Fees & Charges', 'Procedures', 'Lab & Radiology']} active={tab} onChange={setTab} />
 
       {tab === 'General' && (
       <div className="grid cols-2">
@@ -280,6 +335,54 @@ export default function SettingsPage() {
         </Card>
       )}
 
+      {tab === 'Lab & Radiology' && (
+        <>
+          <div className="grid cols-2 mb">
+            <Card title="How it works">
+              <div className="muted">
+                These are the laboratory &amp; radiology tests doctors can request — the investigation inventory, just like the
+                pharmacy drug list. The <b>price</b> you set here (e.g. PCV = ₦2,000) is what the department is paid from the
+                patient's <b>wallet when the result is uploaded</b>. Editing a price applies to every request that has not been
+                billed yet; results already uploaded keep their historical charge.
+              </div>
+            </Card>
+            <Card title="Add a test" actions={<button className="btn primary" onClick={openAddTest}>+ Add Test</button>}>
+              <div className="muted">
+                Add any test your laboratory or radiology department offers. Doctors pick it on the Consultation screen with
+                its price, and the laboratory/radiology queue receives the request instantly.
+              </div>
+            </Card>
+          </div>
+          {[
+            { key: 'lab', title: 'Laboratory Tests', rows: labTests, tone: 'blue' as const },
+            { key: 'rad', title: 'Radiology Tests', rows: radTests, tone: 'amber' as const },
+          ].map((sec) => (
+            <Card key={sec.key} title={`${sec.title} — ${sec.rows.length}`}>
+              <div className="tbl-wrap"><table className="tbl">
+                <thead><tr><th>ID</th><th>Test</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                  {sec.rows.length === 0 && <tr><td colSpan={7} className="muted">No tests yet — add one with the button above.</td></tr>}
+                  {sec.rows.map((t) => (
+                    <tr key={t.id}>
+                      <td>{t.id}</td>
+                      <td><b>{t.name}</b></td>
+                      <td>{t.category || '—'}</td>
+                      <td className="money">{naira(t.price)}</td>
+                      <td>{t.stock || '—'}</td>
+                      <td><Badge tone={t.active === false ? 'gray' : 'green'}>{t.active === false ? 'Inactive' : 'Active'}</Badge></td>
+                      <td className="right">
+                        <button className="btn ghost sm" onClick={() => openEditTest(t)}>Edit price</button>{' '}
+                        <button className="btn ghost sm" style={{ color: 'var(--red-600)' }} onClick={() => { setDeletingTest(t); setErr(''); setOk('') }}>Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table></div>
+            </Card>
+          ))}
+        </>
+      )}
+
       {showAdd && (
         <Modal title={editing ? `Edit Procedure — ${editing.name}` : 'Add Procedure'} onClose={() => { setShowAdd(false); setEditing(null) }}
           footer={<><button className="btn ghost" onClick={() => { setShowAdd(false); setEditing(null) }}>Cancel</button>
@@ -318,6 +421,51 @@ export default function SettingsPage() {
             <div className="k">Total</div><div className="v money">{naira(Number(deleting.amount) * Number(deleting.quantity))}</div>
           </div>
           <div className="muted">This removes it from the catalogue. Existing patient records that already reference it are not changed.</div>
+        </Modal>
+      )}
+
+      {showTest && (
+        <Modal title={editingTest ? `Edit — ${editingTest.name}` : 'Add Test (Laboratory / Radiology)'} onClose={() => { setShowTest(false); setEditingTest(null) }}
+          footer={<><button className="btn ghost" onClick={() => { setShowTest(false); setEditingTest(null) }}>Cancel</button>
+            <button className="btn green" disabled={busy} onClick={saveTest}>{busy ? 'Saving…' : editingTest ? 'Save Changes' : 'Add Test'}</button></>}>
+          {err && <div className="demo-note" style={{ background: 'var(--red-100)', color: 'var(--red-600)' }}>{err}</div>}
+          <div className="form-grid">
+            <Field label="Test name" full>
+              <input className="input" value={testForm.name} onChange={(e) => setTestForm({ ...testForm, name: e.target.value })} placeholder="e.g. PCV" />
+            </Field>
+            <Field label="Department">
+              <select className="input" value={testForm.dept} onChange={(e) => setTestForm({ ...testForm, dept: e.target.value })}>
+                <option value="Lab">Laboratory</option><option value="Radiology">Radiology</option>
+              </select>
+            </Field>
+            <Field label="Category">
+              <input className="input" value={testForm.category} onChange={(e) => setTestForm({ ...testForm, category: e.target.value })} placeholder="e.g. Haematology" />
+            </Field>
+            <Field label="Price (₦)">
+              <input className="input" type="number" min={0} value={testForm.price} onChange={(e) => setTestForm({ ...testForm, price: e.target.value })} placeholder="e.g. 2000" />
+            </Field>
+            <Field label="Consumable stock">
+              <input className="input" type="number" min={0} value={testForm.stock} onChange={(e) => setTestForm({ ...testForm, stock: e.target.value })} />
+            </Field>
+            <Field label="Minimum stock level">
+              <input className="input" type="number" min={0} value={testForm.minStock} onChange={(e) => setTestForm({ ...testForm, minStock: e.target.value })} />
+            </Field>
+          </div>
+          <div className="muted mt">The price is charged to the patient's wallet when a result for this test is uploaded.</div>
+        </Modal>
+      )}
+
+      {deletingTest && (
+        <Modal title={`Delete Test — ${deletingTest.name}`} onClose={() => setDeletingTest(null)}
+          footer={<><button className="btn ghost" onClick={() => setDeletingTest(null)}>Cancel</button>
+            <button className="btn green" style={{ background: 'var(--red-600)' }} disabled={busy} onClick={confirmDeleteTest}>{busy ? 'Deleting…' : 'Delete'}</button></>}>
+          {err && <div className="demo-note" style={{ background: 'var(--red-100)', color: 'var(--red-600)' }}>{err}</div>}
+          <p>Delete <b>{deletingTest.name}</b> ({deletingTest.dept === 'Radiology' ? 'Radiology' : 'Laboratory'}) from the inventory?</p>
+          <div className="kv">
+            <div className="k">Price</div><div className="v money">{naira(deletingTest.price)}</div>
+            <div className="k">Category</div><div className="v">{deletingTest.category || '—'}</div>
+          </div>
+          <div className="muted">Doctors can no longer request it. Requests already made and results already uploaded keep their historical price.</div>
         </Modal>
       )}
 

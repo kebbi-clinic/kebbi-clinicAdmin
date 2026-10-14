@@ -7,6 +7,15 @@ export interface Patient {
   status: 'Active' | 'Inactive'; registered: string; registeredAt: string; wallet: number
 }
 
+/** A laboratory / radiology test in the catalogue — admin-editable price
+ *  (e.g. PCV = ₦2,000), billed from the wallet at result upload. */
+export interface TestItem {
+  id: string; name: string; dept: 'Lab' | 'Radiology'
+  category: string; unit: string; price: number
+  stock: number; minStock: number; active: boolean
+  createdBy?: string; createdAt?: string; updatedAt?: string
+}
+
 /** Every role in the system (staff roles + the two administrator roles). */
 export const ROLES = [
   'Doctor', 'Nurse', 'Records Officer', 'Pharmacist', 'Accountant',
@@ -20,7 +29,7 @@ export const ADMIN_ROLES = ['Super Admin', 'Hospital Administrator']
 export const CAP_ORDER = [
   'patients.register', 'visits.start', 'patients.status', 'patients.activate',
   'patients.inactive.view', 'consultation', 'vitals', 'discharge', 'services.record',
-  'lab.result', 'rad.result', 'rx.dispense', 'inventory.manage',
+  'lab.result', 'rad.result', 'rx.dispense', 'inventory.manage', 'tests.manage',
   'wallet.fund', 'staff.manage', 'staff.delete', 'services.manage',
   'reports.view', 'settings.manage',
 ]
@@ -39,6 +48,7 @@ export const CAP_LABELS: Record<string, string> = {
   'rad.result': 'Upload radiology reports',
   'rx.dispense': 'Dispense prescriptions',
   'inventory.manage': 'Manage pharmacy inventory & prices',
+  'tests.manage': 'Manage laboratory & radiology inventory and prices',
   'wallet.fund': 'Fund patient wallets / record payments',
   'staff.manage': 'Create / edit / deactivate staff',
   'staff.delete': 'Permanently delete a staff record',
