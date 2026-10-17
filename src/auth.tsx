@@ -15,7 +15,22 @@ function storedUser(): User | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(api.hasToken() ? storedUser() : null)
+  const [user, setUser] = useState<User | null>(() => {
+    if (!api.hasToken()) return null
+    /* An expired token is treated as logged out so the user is bounced to
+       login immediately instead of hitting 401 on every request. */
+    if (api.isTokenExpired(api.getToken()!)) {
+      localStorage.removeItem('kc_admin_token')
+      localStorage.removeItem('kc_admin_user')
+      return null
+    }
+    const u = storedUser()
+    if (!u || typeof u.role !== 'string' || typeof u.name !== 'string') {
+      localStorage.removeItem('kc_admin_user')
+      return null
+    }
+    return u
+  })
 
   const login = async (username: string, password: string) => {
     const r = await authApi.login(username, password, 'admin')
