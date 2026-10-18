@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Layout } from '../components/Layout'
-import { Card, PageHead, Badge, statusTone, Tabs, Timeline, naira } from '../components/ui'
+import { Card, PageHead, Badge, statusTone, Tabs, Timeline, naira, AlertCard } from '../components/ui'
+import { ReceiptModal, receiptFromTx, receiptFromPayment, type ReceiptData } from '../components/Receipt'
 import { useFetch, useRealtime, fileUrl } from '../api'
 import { paths } from '../endpoints'
+
+import type { Payment, WalletTx } from '../data'
 
 type Any = Record<string, any>
 
@@ -20,6 +23,9 @@ const TABS = [
 export default function PatientDetail() {
   const { id } = useParams()
   const [tab, setTab] = useState('Overview')
+  /* Receipt for the row whose Receipt button was hit. Must run before the
+     early returns below — hooks must fire in the same order on every render. */
+  const [receipt, setReceipt] = useState<ReceiptData | null>(null)
   const { data: b, error, refetch } = useFetch<Any>(paths.adminPatient(id || ''))
   // Any change made anywhere in the hospital concerning this patient refreshes the page live.
   useRealtime(() => { void refetch() }, [`patient:${id}`, 'activity', 'payment', 'vitals', 'visit', 'investigation', 'prescription', 'admission'])
@@ -189,7 +195,7 @@ export default function PatientDetail() {
             <tbody>{prescriptions.map((r: Any) => (
               <tr key={r.id}>
                 <td>{r.id}</td><td className="muted">{r.createdAt}</td><td>{r.doctor}</td>
-                <td>{(r.items || []).map((i: Any) => `${i.drug} ×${i.qty}`).join(', ') || "—"}</td>
+                <td>{(r.items || []).map((i: Any) => `${i.drug}${i.dose ? ` (${i.dose})` : ''} ×${i.qty}`).join(', ') || "—"}</td>
                 <td className="money">{naira((r.items || []).reduce((s: number, i: Any) => s + i.qty * (i.price || 0), 0))}</td>
                 <td><Badge tone={statusTone(r.status)}>{r.status}</Badge></td>
               </tr>
@@ -201,12 +207,18 @@ export default function PatientDetail() {
       {tab === 'Payments' && (
         <Card title={`Payments — total ${naira(summary.totalPaid)}`}>
           <div className="tbl-wrap"><table className="tbl">
-            <thead><tr><th>Reference</th><th>Service</th><th>Method</th><th>Amount</th><th>Received By</th><th>Date / Time</th><th>Status</th></tr></thead>
+            <thead><tr><th>Reference</th><th>Service</th><th>Method</th><th>Amount</th><th>Received By</th><th>Date / Time</th><th>Status</th><th></th></tr></thead>
             <tbody>{payments.map((t: Any) => (
               <tr key={t.id}>
                 <td>{t.ref}</td><td>{t.service}</td><td>{t.method}</td>
                 <td className="money">{naira(t.amount)}</td><td>{t.staff}</td><td className="muted">{t.at}</td>
                 <td><Badge tone={t.status === 'Paid' ? 'green' : 'amber'}>{t.status}</Badge></td>
+                <td className="right"><button className="btn ghost sm"
+                  onClick={() => {
+                    const linked = walletTxs.find((w: Any) => w.id === t.txId) as WalletTx | undefined
+                    setReceipt(receiptFromPayment(t as Payment, linked, p))
+                  }}
+                >Receipt</button></td>
               </tr>
             ))}</tbody>
           </table></div>
@@ -216,14 +228,16 @@ export default function PatientDetail() {
       {tab === 'Wallet' && (
         <Card title={`Wallet — balance ${naira(p.wallet)}`}>
           <div className="tbl-wrap"><table className="tbl">
-            <thead><tr><th>TX</th><th>Date / Time</th><th>Type</th><th>Amount</th><th>Reason</th><th>Staff</th><th>Method</th><th>Balance After</th></tr></thead>
+            <thead><tr><th>TX</th><th>Date / Time</th><th>Type</th><th>Amount</th><th>Reason</th><th>Staff</th><th>Method</th><th>Balance After</th><th></th></tr></thead>
             <tbody>{walletTxs.map((t: Any) => (
               <tr key={t.id}>
                 <td>{t.id}</td><td className="muted">{t.at}</td>
                 <td><Badge tone={t.type === 'Credit' ? 'green' : 'blue'}>{t.type}</Badge></td>
                 <td className="money">{t.type === 'Credit' ? '+' : '−'}{naira(t.amount)}</td>
                 <td>{t.reason}</td><td>{t.staff}</td><td>{t.method}</td><td className="money">{naira(t.balanceAfter)}</td>
-              </tr>
+                <td className="right"><button className="btn ghost sm"
+                  onClick={() => setReceipt(receiptFromTx(t as WalletTx, p))}
+                >Receipt</button></td></tr>
             ))}</tbody>
           </table></div>
         </Card>
@@ -264,6 +278,8 @@ export default function PatientDetail() {
             : <Timeline items={auditTimeline} />}
         </Card>
       )}
+
+      {receipt && <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
     </Layout>
   )
 }

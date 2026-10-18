@@ -7,6 +7,22 @@ export interface Patient {
   status: 'Active' | 'Inactive'; registered: string; registeredAt: string; wallet: number
 }
 
+/** One money movement on a patient's wallet. `txId` on payments links back
+ *  to the ledger row that produced them, so each payment can open its own
+ *  receipt. New rows also carry the receipt facts (name, sex, staff role). */
+export interface Payment {
+  id: string; ref: string; patientId: string; patientName: string;
+  patientSex?: string; amount: number; method: string; service: string;
+  staff: string; staffRole?: string; txId?: string; at: string;
+  status: 'Paid' | 'Pending'
+}
+
+export interface WalletTx {
+  id: string; patientId: string; patientName?: string; patientSex?: string;
+  type: 'Credit' | 'Debit'; amount: number; reason: string; method: string;
+  staff: string; staffRole?: string; at: string; balanceAfter: number
+}
+
 /** A laboratory / radiology test in the catalogue — admin-editable price
  *  (e.g. PCV = ₦2,000), billed from the wallet at result upload. */
 export interface TestItem {
