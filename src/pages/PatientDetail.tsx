@@ -55,6 +55,15 @@ export default function PatientDetail() {
   const prescriptions = list(b.prescriptions)
   const payments = list(b.payments)
   const walletTxs = list(b.walletTxs)
+  /* Total Paid = sum of wallet credits only (money actually credited to the
+   * patient's wallet), not debits or every transaction row. */
+  const totalPaid = useMemo(
+    () =>
+      walletTxs
+        .filter((t: Any) => t.type === 'Credit')
+        .reduce((acc, t) => acc + Number(t.amount || 0), 0),
+    [walletTxs],
+  )
   const admissions = list(b.admissions)
   const activity = list(b.activity)
 
@@ -89,7 +98,7 @@ export default function PatientDetail() {
         <Card><div className="card-b"><div className="v" style={{ fontSize: 22, fontWeight: 800 }}>{summary.visits ?? 0}</div><div className="muted">Visits</div></div></Card>
         <Card><div className="card-b"><div className="v" style={{ fontSize: 22, fontWeight: 800 }}>{summary.investigations ?? 0}</div><div className="muted">Investigations</div></div></Card>
         <Card><div className="card-b"><div className="v" style={{ fontSize: 22, fontWeight: 800 }}>{summary.prescriptions ?? 0}</div><div className="muted">Prescriptions</div></div></Card>
-        <Card><div className="card-b"><div className="v money" style={{ fontSize: 22, fontWeight: 800 }}>{naira(summary.totalPaid)}</div><div className="muted">Total Paid</div></div></Card>
+        <Card><div className="card-b"><div className="v money" style={{ fontSize: 22, fontWeight: 800 }}>{naira(totalPaid)}</div><div className="muted">Total Paid</div></div></Card>
       </div>
 
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
@@ -205,7 +214,7 @@ export default function PatientDetail() {
       )}
 
       {tab === 'Payments' && (
-        <Card title={`Payments — total ${naira(summary.totalPaid)}`}>
+        <Card title={`Payments — total ${naira(totalPaid)}`}>
           <div className="tbl-wrap"><table className="tbl">
             <thead><tr><th>Reference</th><th>Service</th><th>Method</th><th>Amount</th><th>Received By</th><th>Date / Time</th><th>Status</th><th></th></tr></thead>
             <tbody>{payments.map((t: Any) => (
