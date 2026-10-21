@@ -56,14 +56,13 @@ export default function PatientDetail() {
   const payments = list(b.payments)
   const walletTxs = list(b.walletTxs)
   /* Total Paid = sum of wallet credits only (money actually credited to the
-   * patient's wallet), not debits or every transaction row. */
-  const totalPaid = useMemo(
-    () =>
-      walletTxs
-        .filter((t: Any) => t.type === 'Credit')
-        .reduce((acc, t) => acc + Number(t.amount || 0), 0),
-    [walletTxs],
-  )
+   * patient's wallet), not debits or every transaction row. Computed as a
+   * plain value (not a hook) so it stays after the early returns without
+   * breaking the Rules of Hooks. */
+  const totalPaid =
+    walletTxs
+      .filter((t: Any) => t.type === 'Credit')
+      .reduce((acc, t) => acc + Number(t.amount || 0), 0) || 0
   const admissions = list(b.admissions)
   const activity = list(b.activity)
 
