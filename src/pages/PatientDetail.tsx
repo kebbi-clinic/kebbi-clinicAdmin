@@ -124,9 +124,9 @@ export default function PatientDetail() {
           </Card>
           <Card title="Latest Diagnosis" className="span-2">
             <div className="tbl-wrap"><table className="tbl">
-              <thead><tr><th>Visit</th><th>Date</th><th>Doctor</th><th>Diagnosis</th></tr></thead>
+              <thead><tr><th>Visit</th><th>Date</th><th>Doctor</th><th>Diagnosis</th><th>Plan</th></tr></thead>
               <tbody>{visits.filter((v: Any) => v.consultation).map((v: Any) => (
-                <tr key={v.id}><td>{v.id}</td><td>{v.date}</td><td>{v.consultation?.doctor || String(v.doctor || "—")}</td><td>{v.consultation?.diagnosis || '—'}</td></tr>
+                <tr key={v.id}><td>{v.id}</td><td>{v.date}</td><td>{v.consultation?.doctor || String(v.doctor || "—")}</td><td>{v.consultation?.diagnosis || '—'}</td><td>{v.consultation?.plan || '—'}</td></tr>
               ))}</tbody>
             </table></div>
           </Card>
@@ -152,12 +152,13 @@ export default function PatientDetail() {
       {tab === 'Visits' && (
         <Card title={`Visits — ${visits.length} (one permanent patient, many visits)`}>
           <div className="tbl-wrap"><table className="tbl">
-            <thead><tr><th>Visit ID</th><th>Date</th><th>Type</th><th>Status</th><th>Diagnosis</th><th>Doctor</th></tr></thead>
+            <thead><tr><th>Visit ID</th><th>Date</th><th>Type</th><th>Status</th><th>Diagnosis</th><th>Plan</th><th>Doctor</th></tr></thead>
             <tbody>{visits.map((v: Any) => (
               <tr key={v.id}>
                 <td><b>{v.id}</b></td><td>{v.date}</td><td>{v.type}</td>
                 <td><Badge tone={statusTone(v.status)}>{v.status}</Badge></td>
                 <td>{v.consultation?.diagnosis || '—'}</td>
+                <td>{v.consultation?.plan || '—'}</td>
                 <td>{v.consultation?.doctor || '—'}</td>
               </tr>
             ))}</tbody>
